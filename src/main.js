@@ -96,7 +96,18 @@ function loadSelfieImage(src) {
   const img = new Image()
   img.onload = () => {
     state.selfieImage = img
-    beginRun()
+    state.started = false
+    state.playing = false
+    state.gameOver = false
+    state.score = 0
+    scoreEl.textContent = '0'
+    state.bird.y = 320
+    state.bird.velocity = 0
+    state.pipes = []
+    state.spawnTimer = 90
+    gameOverOverlay.classList.add('hidden')
+    startOverlay.classList.add('hidden')
+    render()
   }
   img.src = src
 }
@@ -108,7 +119,7 @@ function beginRun() {
   state.bird.velocity = 0
   state.pipes = []
   state.spawnTimer = 90
-  state.started = true
+  state.started = false
   state.playing = true
   state.gameOver = false
   gameOverOverlay.classList.add('hidden')
@@ -131,11 +142,20 @@ function endRun() {
 }
 
 function flap() {
-  if (!state.started) return
+  if (!state.started && !state.gameOver) {
+    state.started = true
+    state.playing = true
+    state.bird.velocity = -7.5
+    state.lastTimestamp = 0
+    requestAnimationFrame(gameLoop)
+    return
+  }
+
   if (state.gameOver) {
     beginRun()
     return
   }
+
   state.bird.velocity = -7.5
 }
 

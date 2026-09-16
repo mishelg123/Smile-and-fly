@@ -24,26 +24,12 @@ app.innerHTML = `
     <div class="game-stage">
       <canvas id="gameCanvas" width="420" height="700"></canvas>
 
-      <div id="startOverlay" class="overlay visible">
+      <div id="startOverlay" class="overlay hidden">
         <div class="panel">
-          <p class="eyebrow">Before playing</p>
-          <h2>Take a selfie</h2>
-          <p class="summary">Your face becomes the flyer. No selfie, no flight.</p>
-
-          <video id="camera" autoplay playsinline muted></video>
-          <canvas id="selfieCanvas" width="320" height="320" hidden></canvas>
-
-          <div class="action-row">
-            <button id="cameraBtn" class="secondary" type="button">Open camera</button>
-            <label class="upload-button" for="uploadInput">Upload selfie</label>
-            <input id="uploadInput" type="file" accept="image/*" capture="user" />
-          </div>
-
-          <div id="selfiePreviewWrap" class="selfie-preview hidden">
-            <img id="selfiePreview" alt="Captured selfie preview" />
-          </div>
-
-          <button id="captureBtn" class="primary hidden" type="button">Take selfie</button>
+          <p class="eyebrow">Player loaded</p>
+          <h2>Ready to fly</h2>
+          <p class="summary">Tap to start the run with your custom player.</p>
+          <button id="startBtn" class="primary" type="button">Start flying</button>
         </div>
       </div>
 
@@ -68,14 +54,8 @@ const bestScoreEl = document.querySelector('#best-score')
 const finalScoreEl = document.querySelector('#finalScore')
 const startOverlay = document.querySelector('#startOverlay')
 const gameOverOverlay = document.querySelector('#gameOverOverlay')
-const camera = document.querySelector('#camera')
-const selfieCanvas = document.querySelector('#selfieCanvas')
-const cameraBtn = document.querySelector('#cameraBtn')
-const captureBtn = document.querySelector('#captureBtn')
-const uploadInput = document.querySelector('#uploadInput')
-const selfiePreviewWrap = document.querySelector('#selfiePreviewWrap')
-const selfiePreview = document.querySelector('#selfiePreview')
 const restartBtn = document.querySelector('#restartBtn')
+const startBtn = document.querySelector('#startBtn')
 
 const state = {
   playing: false,
@@ -99,14 +79,10 @@ const state = {
 
 bestScoreEl.textContent = state.bestScore
 
-function loadSelfieImage(src) {
+function loadDefaultPlayerImage() {
   const img = new Image()
   img.onload = () => {
     state.selfieImage = img
-    if (selfiePreview) {
-      selfiePreview.src = src
-      selfiePreviewWrap.classList.remove('hidden')
-    }
     state.started = false
     state.playing = false
     state.gameOver = false
@@ -120,7 +96,7 @@ function loadSelfieImage(src) {
     startOverlay.classList.add('hidden')
     render()
   }
-  img.src = src
+  img.src = '/player.jpg'
 }
 
 function beginRun() {
@@ -159,7 +135,7 @@ function endRun() {
 
 function flap() {
   if (!state.selfieImage) {
-    startOverlay.classList.remove('hidden')
+    loadDefaultPlayerImage()
     return
   }
 
@@ -382,88 +358,20 @@ function gameLoop(timestamp) {
   }
 }
 
-async function openCamera() {
-  if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
-    alert('This browser does not support camera access. You can still upload a photo instead.')
-    return
-  }
-
-  try {
-    const stream = await navigator.mediaDevices.getUserMedia({
-      video: { facingMode: 'user', width: { ideal: 640 }, height: { ideal: 480 } },
-      audio: false,
-    })
-    state.cameraStream = stream
-    camera.srcObject = stream
-    cameraBtn.textContent = 'Camera ready'
-    captureBtn.classList.remove('hidden')
-  } catch (error) {
-    console.error(error)
-    alert('Camera access was blocked. Please upload a photo instead.')
-  }
-}
-
-function captureSelfie() {
-  if (!camera || !camera.videoWidth || !camera.videoHeight) {
-    alert('Please open the camera first so the selfie can be taken.')
-    return
-  }
-
-  const ctx2d = selfieCanvas.getContext('2d')
-  selfieCanvas.width = 320
-  selfieCanvas.height = 320
-
-  const size = Math.min(camera.videoWidth, camera.videoHeight)
-  const xOffset = (camera.videoWidth - size) / 2
-  const yOffset = (camera.videoHeight - size) / 2
-  ctx2d.clearRect(0, 0, selfieCanvas.width, selfieCanvas.height)
-  ctx2d.save()
-  ctx2d.beginPath()
-  ctx2d.arc(160, 160, 150, 0, Math.PI * 2)
-  ctx2d.closePath()
-  ctx2d.clip()
-  ctx2d.drawImage(
-    camera,
-    xOffset,
-    yOffset,
-    size,
-    size,
-    10,
-    10,
-    300,
-    300,
-  )
-  ctx2d.restore()
-
-  const imageUrl = selfieCanvas.toDataURL('image/png')
-  if (selfiePreview) {
-    selfiePreview.src = imageUrl
-    selfiePreviewWrap.classList.remove('hidden')
-  }
-
-  loadSelfieImage(imageUrl)
-  if (state.cameraStream) {
-    state.cameraStream.getTracks().forEach((track) => track.stop())
-  }
-}
-
-uploadInput.addEventListener('change', (event) => {
-  const file = event.target.files?.[0]
-  if (!file) return
-  const reader = new FileReader()
-  reader.onload = () => loadSelfieImage(reader.result)
-  reader.readAsDataURL(file)
-})
-
-cameraBtn.addEventListener('click', openCamera)
-captureBtn.addEventListener('click', captureSelfie)
 restartBtn.addEventListener('click', () => {
   if (state.selfieImage) {
     beginRun()
   } else {
-    startOverlay.classList.remove('hidden')
+    loadDefaultPlayerImage()
     gameOverOverlay.classList.add('hidden')
   }
+})
+
+startBtn.addEventListener('click', () => {
+  if (!state.selfieImage) {
+    loadDefaultPlayerImage()
+  }
+  beginRun()
 })
 
 window.addEventListener('pointerdown', (event) => {
@@ -482,4 +390,5 @@ window.addEventListener('keydown', (event) => {
 
 scoreEl.textContent = '0'
 bestScoreEl.textContent = String(state.bestScore)
+loadDefaultPlayerImage()
 render()

@@ -26,19 +26,20 @@ app.innerHTML = `
 
       <div id="startOverlay" class="overlay visible">
         <div class="panel">
-          <p class="eyebrow">First, make it selfie time</p>
-          <h2>Turn your face into the flyer</h2>
+          <p class="eyebrow">Before playing</p>
+          <h2>Take a selfie</h2>
+          <p class="summary">Your face becomes the flyer. No selfie, no flight.</p>
 
           <video id="camera" autoplay playsinline muted></video>
           <canvas id="selfieCanvas" width="320" height="320" hidden></canvas>
 
           <div class="action-row">
             <button id="cameraBtn" class="secondary" type="button">Open camera</button>
-            <label class="upload-button" for="uploadInput">Upload photo</label>
+            <label class="upload-button" for="uploadInput">Upload selfie</label>
             <input id="uploadInput" type="file" accept="image/*" capture="user" />
           </div>
 
-          <button id="captureBtn" class="primary hidden" type="button">Capture selfie</button>
+          <button id="captureBtn" class="primary hidden" type="button">Use this selfie</button>
         </div>
       </div>
 
@@ -113,6 +114,11 @@ function loadSelfieImage(src) {
 }
 
 function beginRun() {
+  if (!state.selfieImage) {
+    startOverlay.classList.remove('hidden')
+    return
+  }
+
   state.score = 0
   scoreEl.textContent = '0'
   state.bird.y = 320
@@ -142,6 +148,11 @@ function endRun() {
 }
 
 function flap() {
+  if (!state.selfieImage) {
+    startOverlay.classList.remove('hidden')
+    return
+  }
+
   if (!state.started && !state.gameOver) {
     state.started = true
     state.playing = true

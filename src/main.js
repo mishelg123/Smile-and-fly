@@ -302,6 +302,7 @@ function drawPipe(pipe) {
 
 function drawSelfieBird() {
   const { x, y, radius } = state.bird
+
   ctx.save()
   ctx.beginPath()
   ctx.arc(x, y, radius, 0, Math.PI * 2)
@@ -320,16 +321,6 @@ function drawSelfieBird() {
   ctx.lineWidth = 3
   ctx.beginPath()
   ctx.arc(x, y, radius - 2, 0, Math.PI * 2)
-  ctx.stroke()
-
-  ctx.fillStyle = '#111827'
-  ctx.beginPath()
-  ctx.arc(x - 9, y - 7, 3, 0, Math.PI * 2)
-  ctx.arc(x + 9, y - 7, 3, 0, Math.PI * 2)
-  ctx.fill()
-
-  ctx.beginPath()
-  ctx.arc(x, y + 8, 7, 0, Math.PI)
   ctx.stroke()
 }
 

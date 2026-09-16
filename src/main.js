@@ -39,7 +39,11 @@ app.innerHTML = `
             <input id="uploadInput" type="file" accept="image/*" capture="user" />
           </div>
 
-          <button id="captureBtn" class="primary hidden" type="button">Use this selfie</button>
+          <div id="selfiePreviewWrap" class="selfie-preview hidden">
+            <img id="selfiePreview" alt="Captured selfie preview" />
+          </div>
+
+          <button id="captureBtn" class="primary hidden" type="button">Take selfie</button>
         </div>
       </div>
 
@@ -69,6 +73,8 @@ const selfieCanvas = document.querySelector('#selfieCanvas')
 const cameraBtn = document.querySelector('#cameraBtn')
 const captureBtn = document.querySelector('#captureBtn')
 const uploadInput = document.querySelector('#uploadInput')
+const selfiePreviewWrap = document.querySelector('#selfiePreviewWrap')
+const selfiePreview = document.querySelector('#selfiePreview')
 const restartBtn = document.querySelector('#restartBtn')
 
 const state = {
@@ -97,6 +103,10 @@ function loadSelfieImage(src) {
   const img = new Image()
   img.onload = () => {
     state.selfieImage = img
+    if (selfiePreview) {
+      selfiePreview.src = src
+      selfiePreviewWrap.classList.remove('hidden')
+    }
     state.started = false
     state.playing = false
     state.gameOver = false
@@ -394,35 +404,43 @@ async function openCamera() {
 }
 
 function captureSelfie() {
+  if (!camera || !camera.videoWidth || !camera.videoHeight) {
+    alert('Please open the camera first so the selfie can be taken.')
+    return
+  }
+
   const ctx2d = selfieCanvas.getContext('2d')
   selfieCanvas.width = 320
   selfieCanvas.height = 320
 
-  if (camera.videoWidth && camera.videoHeight) {
-    const size = Math.min(camera.videoWidth, camera.videoHeight)
-    const xOffset = (camera.videoWidth - size) / 2
-    const yOffset = (camera.videoHeight - size) / 2
-    ctx2d.clearRect(0, 0, selfieCanvas.width, selfieCanvas.height)
-    ctx2d.save()
-    ctx2d.beginPath()
-    ctx2d.arc(160, 160, 150, 0, Math.PI * 2)
-    ctx2d.closePath()
-    ctx2d.clip()
-    ctx2d.drawImage(
-      camera,
-      xOffset,
-      yOffset,
-      size,
-      size,
-      10,
-      10,
-      300,
-      300,
-    )
-    ctx2d.restore()
-  }
+  const size = Math.min(camera.videoWidth, camera.videoHeight)
+  const xOffset = (camera.videoWidth - size) / 2
+  const yOffset = (camera.videoHeight - size) / 2
+  ctx2d.clearRect(0, 0, selfieCanvas.width, selfieCanvas.height)
+  ctx2d.save()
+  ctx2d.beginPath()
+  ctx2d.arc(160, 160, 150, 0, Math.PI * 2)
+  ctx2d.closePath()
+  ctx2d.clip()
+  ctx2d.drawImage(
+    camera,
+    xOffset,
+    yOffset,
+    size,
+    size,
+    10,
+    10,
+    300,
+    300,
+  )
+  ctx2d.restore()
 
   const imageUrl = selfieCanvas.toDataURL('image/png')
+  if (selfiePreview) {
+    selfiePreview.src = imageUrl
+    selfiePreviewWrap.classList.remove('hidden')
+  }
+
   loadSelfieImage(imageUrl)
   if (state.cameraStream) {
     state.cameraStream.getTracks().forEach((track) => track.stop())

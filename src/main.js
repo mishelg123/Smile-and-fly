@@ -369,6 +369,7 @@ window.addEventListener('pointerdown', (event) => {
   if (event.target.closest('button') || event.target.closest('label') || event.target.closest('input')) {
     return
   }
+  event.preventDefault()
   flap()
 })
 
@@ -378,6 +379,16 @@ window.addEventListener('keydown', (event) => {
     flap()
   }
 })
+
+window.addEventListener('dblclick', (event) => {
+  event.preventDefault()
+})
+
+window.addEventListener('touchstart', (event) => {
+  if (event.touches.length > 1) {
+    event.preventDefault()
+  }
+}, { passive: false })
 
 scoreEl.textContent = '0'
 bestScoreEl.textContent = String(state.bestScore)

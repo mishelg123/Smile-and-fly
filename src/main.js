@@ -24,11 +24,14 @@ app.innerHTML = `
     <div class="game-stage">
       <canvas id="gameCanvas" width="420" height="700"></canvas>
 
-      <div id="startOverlay" class="overlay hidden">
+      <div id="startOverlay" class="overlay visible">
         <div class="panel">
-          <p class="eyebrow">Player loaded</p>
-          <h2>Ready to fly</h2>
-          <p class="summary">Tap to start the run with your custom player.</p>
+          <p class="eyebrow">Player profile</p>
+          <h2>Who is flying?</h2>
+
+          <label class="name-label" for="playerNameInput">Your name</label>
+          <input id="playerNameInput" type="text" maxlength="14" placeholder="Enter your name" />
+
           <button id="startBtn" class="primary" type="button">Start flying</button>
         </div>
       </div>
@@ -41,6 +44,14 @@ app.innerHTML = `
           <button id="restartBtn" class="primary" type="button">Play again</button>
         </div>
       </div>
+    </div>
+
+    <div class="leaderboard">
+      <div class="leaderboard-header">
+        <h3>Top players</h3>
+        <span>Local best</span>
+      </div>
+      <ol id="leaderboardList"></ol>
     </div>
 
     <p class="controls">Tap, click, or press space to flap</p>
@@ -56,13 +67,22 @@ const startOverlay = document.querySelector('#startOverlay')
 const gameOverOverlay = document.querySelector('#gameOverOverlay')
 const restartBtn = document.querySelector('#restartBtn')
 const startBtn = document.querySelector('#startBtn')
+const playerNameInput = document.querySelector('#playerNameInput')
+const leaderboardList = document.querySelector('#leaderboardList')
+
+const STORAGE_KEYS = {
+  playerName: 'selfieFlapPlayerName',
+  bestScore: 'selfieFlapBest',
+  leaderboard: 'selfieFlapLeaderboard',
+}
 
 const state = {
   playing: false,
   started: false,
   gameOver: false,
   score: 0,
-  bestScore: Number(localStorage.getItem('selfieFlapBest') || 0),
+  bestScore: Number(localStorage.getItem(STORAGE_KEYS.bestScore) || 0),
+  playerName: localStorage.getItem(STORAGE_KEYS.playerName) || 'Player',
   selfieImage: null,
   bird: {
     x: 120,
@@ -78,6 +98,45 @@ const state = {
 }
 
 bestScoreEl.textContent = state.bestScore
+playerNameInput.value = state.playerName
+
+function getLeaderboard() {
+  try {
+    const raw = JSON.parse(localStorage.getItem(STORAGE_KEYS.leaderboard) || '[]')
+    return Array.isArray(raw) ? raw : []
+  } catch {
+    return []
+  }
+}
+
+function renderLeaderboard() {
+  const leaderboard = [...getLeaderboard()]
+    .sort((a, b) => b.score - a.score)
+    .slice(0, 5)
+
+  leaderboardList.innerHTML = leaderboard.length
+    ? leaderboard.map((entry, index) => `
+        <li>
+          <span class="rank">#${index + 1}</span>
+          <span class="name">${entry.name}</span>
+          <span class="score">${entry.score}</span>
+        </li>
+      `).join('')
+    : '<li class="empty">No scores yet</li>'
+}
+
+function savePlayerScore(score) {
+  const name = (state.playerName || 'Player').trim().slice(0, 14) || 'Player'
+  const leaderboard = getLeaderboard()
+  leaderboard.push({ name, score })
+
+  const finalBoard = leaderboard
+    .sort((a, b) => b.score - a.score)
+    .slice(0, 5)
+
+  localStorage.setItem(STORAGE_KEYS.leaderboard, JSON.stringify(finalBoard))
+  renderLeaderboard()
+}
 
 function loadDefaultPlayerImage() {
   const img = new Image()
@@ -126,9 +185,11 @@ function endRun() {
   state.gameOver = true
   if (state.score > state.bestScore) {
     state.bestScore = state.score
-    localStorage.setItem('selfieFlapBest', String(state.bestScore))
+    localStorage.setItem(STORAGE_KEYS.bestScore, String(state.bestScore))
     bestScoreEl.textContent = state.bestScore
   }
+
+  savePlayerScore(state.score)
   finalScoreEl.textContent = state.score
   gameOverOverlay.classList.remove('hidden')
 }
@@ -359,6 +420,11 @@ restartBtn.addEventListener('click', () => {
 })
 
 startBtn.addEventListener('click', () => {
+  const enteredName = playerNameInput.value.trim()
+  state.playerName = enteredName || 'Player'
+  localStorage.setItem(STORAGE_KEYS.playerName, state.playerName)
+  playerNameInput.value = state.playerName
+
   if (!state.selfieImage) {
     loadDefaultPlayerImage()
   }
@@ -392,5 +458,6 @@ window.addEventListener('touchstart', (event) => {
 
 scoreEl.textContent = '0'
 bestScoreEl.textContent = String(state.bestScore)
+renderLeaderboard()
 loadDefaultPlayerImage()
 render()

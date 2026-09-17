@@ -3,58 +3,76 @@ import './style.css'
 const app = document.querySelector('#app')
 
 app.innerHTML = `
-  <div class="game-shell">
-    <header class="hud">
-      <div>
-        <p class="label">Selfie Flap</p>
-        <h1>Smile and fly</h1>
+  <div id="gameView" class="app-view">
+    <div class="game-shell">
+      <header class="hud">
+        <div>
+          <p class="label">Selfie Flap</p>
+          <h1>Smile and fly</h1>
+        </div>
+
+        <div class="hud-actions">
+          <button id="leaderboardBtn" class="secondary compact" type="button">Leaderboard</button>
+          <div class="scores">
+            <div class="score-box">
+              <span>Score</span>
+              <strong id="score">0</strong>
+            </div>
+            <div class="score-box">
+              <span>Best</span>
+              <strong id="best-score">0</strong>
+            </div>
+          </div>
+        </div>
+      </header>
+
+      <div class="game-stage">
+        <canvas id="gameCanvas" width="420" height="700"></canvas>
+
+        <div id="startOverlay" class="overlay visible">
+          <div class="panel">
+            <p class="eyebrow">Player profile</p>
+            <h2>Who is flying?</h2>
+
+            <label class="name-label" for="playerNameInput">Your name</label>
+            <input id="playerNameInput" type="text" maxlength="14" placeholder="Enter your name" />
+
+            <button id="startBtn" class="primary" type="button">Start flying</button>
+          </div>
+        </div>
+
+        <div id="gameOverOverlay" class="overlay hidden">
+          <div class="panel small">
+            <p class="eyebrow">Round complete</p>
+            <h2>Game Over</h2>
+            <p class="summary">You scored <span id="finalScore">0</span> points</p>
+            <button id="restartBtn" class="primary" type="button">Play again</button>
+          </div>
+        </div>
       </div>
-      <div class="scores">
-        <div class="score-box">
-          <span>Score</span>
-          <strong id="score">0</strong>
+
+      <p class="controls">Tap, click, or press space to flap</p>
+    </div>
+  </div>
+
+  <div id="leaderboardView" class="app-view hidden">
+    <div class="leaderboard-page">
+      <header class="leaderboard-top">
+        <div>
+          <p class="label">Hall of fame</p>
+          <h2>Top players</h2>
         </div>
-        <div class="score-box">
-          <span>Best</span>
-          <strong id="best-score">0</strong>
+        <button id="backToGameBtn" class="secondary" type="button">Back to game</button>
+      </header>
+
+      <div class="leaderboard-card">
+        <div class="leaderboard-header">
+          <h3>Best scores</h3>
+          <span>Updated live</span>
         </div>
-      </div>
-    </header>
-
-    <div class="game-stage">
-      <canvas id="gameCanvas" width="420" height="700"></canvas>
-
-      <div id="startOverlay" class="overlay visible">
-        <div class="panel">
-          <p class="eyebrow">Player profile</p>
-          <h2>Who is flying?</h2>
-
-          <label class="name-label" for="playerNameInput">Your name</label>
-          <input id="playerNameInput" type="text" maxlength="14" placeholder="Enter your name" />
-
-          <button id="startBtn" class="primary" type="button">Start flying</button>
-        </div>
-      </div>
-
-      <div id="gameOverOverlay" class="overlay hidden">
-        <div class="panel small">
-          <p class="eyebrow">Round complete</p>
-          <h2>Game Over</h2>
-          <p class="summary">You scored <span id="finalScore">0</span> points</p>
-          <button id="restartBtn" class="primary" type="button">Play again</button>
-        </div>
+        <ol id="leaderboardPageList" class="leaderboard-list"></ol>
       </div>
     </div>
-
-    <div class="leaderboard">
-      <div class="leaderboard-header">
-        <h3>Top players</h3>
-        <span>Local best</span>
-      </div>
-      <ol id="leaderboardList"></ol>
-    </div>
-
-    <p class="controls">Tap, click, or press space to flap</p>
   </div>
 `
 
@@ -68,7 +86,11 @@ const gameOverOverlay = document.querySelector('#gameOverOverlay')
 const restartBtn = document.querySelector('#restartBtn')
 const startBtn = document.querySelector('#startBtn')
 const playerNameInput = document.querySelector('#playerNameInput')
-const leaderboardList = document.querySelector('#leaderboardList')
+const leaderboardPageList = document.querySelector('#leaderboardPageList')
+const gameView = document.querySelector('#gameView')
+const leaderboardView = document.querySelector('#leaderboardView')
+const leaderboardBtn = document.querySelector('#leaderboardBtn')
+const backToGameBtn = document.querySelector('#backToGameBtn')
 
 const STORAGE_KEYS = {
   playerName: 'selfieFlapPlayerName',
@@ -94,7 +116,21 @@ const state = {
   lastTimestamp: 0,
   spawnTimer: 0,
   groundHeight: 88,
-  cameraStream: null,
+}
+
+function showGameView() {
+  gameView.classList.remove('hidden')
+  leaderboardView.classList.add('hidden')
+}
+
+function showLeaderboardView() {
+  leaderboardView.classList.remove('hidden')
+  gameView.classList.add('hidden')
+  renderLeaderboard()
+}
+
+function isStartScreenVisible() {
+  return !startOverlay.classList.contains('hidden')
 }
 
 bestScoreEl.textContent = state.bestScore
@@ -112,9 +148,9 @@ function getLeaderboard() {
 function renderLeaderboard() {
   const leaderboard = [...getLeaderboard()]
     .sort((a, b) => b.score - a.score)
-    .slice(0, 5)
+    .slice(0, 10)
 
-  leaderboardList.innerHTML = leaderboard.length
+  leaderboardPageList.innerHTML = leaderboard.length
     ? leaderboard.map((entry, index) => `
         <li>
           <span class="rank">#${index + 1}</span>
@@ -128,39 +164,41 @@ function renderLeaderboard() {
 function savePlayerScore(score) {
   const name = (state.playerName || 'Player').trim().slice(0, 14) || 'Player'
   const leaderboard = getLeaderboard()
-  leaderboard.push({ name, score })
+  const existingIndex = leaderboard.findIndex((entry) => entry.name.toLowerCase() === name.toLowerCase())
+  const updatedScore = Number(score) || 0
+
+  if (existingIndex >= 0) {
+    leaderboard[existingIndex].score = Math.max(Number(leaderboard[existingIndex].score) || 0, updatedScore)
+  } else {
+    leaderboard.push({ name, score: updatedScore })
+  }
 
   const finalBoard = leaderboard
     .sort((a, b) => b.score - a.score)
-    .slice(0, 5)
+    .slice(0, 10)
 
   localStorage.setItem(STORAGE_KEYS.leaderboard, JSON.stringify(finalBoard))
   renderLeaderboard()
 }
 
-function loadDefaultPlayerImage() {
+function loadDefaultPlayerImage(onReady) {
+  if (state.selfieImage) {
+    if (typeof onReady === 'function') onReady()
+    return
+  }
+
   const img = new Image()
   img.onload = () => {
     state.selfieImage = img
-    state.started = false
-    state.playing = false
-    state.gameOver = false
-    state.score = 0
-    scoreEl.textContent = '0'
-    state.bird.y = 320
-    state.bird.velocity = 0
-    state.pipes = []
-    state.spawnTimer = 90
-    gameOverOverlay.classList.add('hidden')
-    startOverlay.classList.add('hidden')
     render()
+    if (typeof onReady === 'function') onReady()
   }
   img.src = '/player.jpg'
 }
 
 function beginRun() {
   if (!state.selfieImage) {
-    startOverlay.classList.remove('hidden')
+    loadDefaultPlayerImage(() => beginRun())
     return
   }
 
@@ -181,8 +219,10 @@ function beginRun() {
 
 function endRun() {
   if (state.gameOver) return
+
   state.playing = false
   state.gameOver = true
+
   if (state.score > state.bestScore) {
     state.bestScore = state.score
     localStorage.setItem(STORAGE_KEYS.bestScore, String(state.bestScore))
@@ -195,6 +235,8 @@ function endRun() {
 }
 
 function flap() {
+  if (leaderboardView.classList.contains('hidden') === false) return
+
   if (!state.selfieImage) {
     loadDefaultPlayerImage()
     return
@@ -235,14 +277,6 @@ function createPipe() {
     topHeight,
     scored: false,
   })
-}
-
-function distanceToRect(pointX, pointY, rectX, rectY, rectW, rectH) {
-  const nearestX = Math.max(rectX, Math.min(pointX, rectX + rectW))
-  const nearestY = Math.max(rectY, Math.min(pointY, rectY + rectH))
-  const dx = pointX - nearestX
-  const dy = pointY - nearestY
-  return Math.sqrt(dx * dx + dy * dy)
 }
 
 function hitPipe(pipe) {
@@ -410,39 +444,54 @@ function gameLoop(timestamp) {
   }
 }
 
-restartBtn.addEventListener('click', () => {
-  if (state.selfieImage) {
-    beginRun()
-  } else {
-    loadDefaultPlayerImage()
-    gameOverOverlay.classList.add('hidden')
-  }
-})
-
 startBtn.addEventListener('click', () => {
   const enteredName = playerNameInput.value.trim()
-  state.playerName = enteredName || 'Player'
+  if (!enteredName) {
+    playerNameInput.focus()
+    return
+  }
+
+  state.playerName = enteredName
   localStorage.setItem(STORAGE_KEYS.playerName, state.playerName)
   playerNameInput.value = state.playerName
 
   if (!state.selfieImage) {
-    loadDefaultPlayerImage()
+    loadDefaultPlayerImage(() => beginRun())
+    return
   }
+
   beginRun()
+})
+
+leaderboardBtn.addEventListener('click', showLeaderboardView)
+backToGameBtn.addEventListener('click', showGameView)
+
+restartBtn.addEventListener('click', () => {
+  if (state.selfieImage) {
+    beginRun()
+  } else {
+    loadDefaultPlayerImage(() => beginRun())
+    gameOverOverlay.classList.add('hidden')
+  }
 })
 
 window.addEventListener('pointerdown', (event) => {
   if (event.target.closest('button') || event.target.closest('label') || event.target.closest('input')) {
     return
   }
-  event.preventDefault()
-  flap()
+
+  if (leaderboardView.classList.contains('hidden') && !isStartScreenVisible()) {
+    event.preventDefault()
+    flap()
+  }
 })
 
 window.addEventListener('keydown', (event) => {
   if (event.code === 'Space') {
     event.preventDefault()
-    flap()
+    if (leaderboardView.classList.contains('hidden') && !isStartScreenVisible()) {
+      flap()
+    }
   }
 })
 

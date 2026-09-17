@@ -45,14 +45,24 @@ label {
   padding: 24px 18px 36px;
 }
 
-.game-shell {
+.app-view {
+  width: 100%;
+}
+
+.app-view.hidden {
+  display: none;
+}
+
+.game-shell,
+.leaderboard-page {
   display: flex;
   flex-direction: column;
   gap: 20px;
   align-items: center;
 }
 
-.hud {
+.hud,
+.leaderboard-top {
   width: min(100%, 420px);
   display: flex;
   justify-content: space-between;
@@ -70,11 +80,19 @@ label {
   font-weight: 700;
 }
 
-.hud h1 {
+.hud h1,
+.leaderboard-top h2 {
   margin: 4px 0 0;
   font-size: clamp(2rem, 4vw, 2.8rem);
   line-height: 1.05;
   color: #1f2937;
+}
+
+.hud-actions {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 10px;
 }
 
 .scores {
@@ -155,24 +173,6 @@ canvas {
   font-size: 2rem;
 }
 
-#camera {
-  width: 100%;
-  height: 200px;
-  background: #111827;
-  border-radius: 18px;
-  object-fit: cover;
-  margin: 14px 0 12px;
-  display: block;
-}
-
-.action-row {
-  display: flex;
-  justify-content: center;
-  gap: 10px;
-  flex-wrap: wrap;
-  margin-bottom: 12px;
-}
-
 button,
 .upload-button {
   border: none;
@@ -199,16 +199,9 @@ button:hover,
   color: #111827;
 }
 
-.upload-button {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  background: #ddd6fe;
-  color: #4c1d95;
-}
-
-#uploadInput {
-  display: none;
+.compact {
+  padding: 0.65rem 1rem;
+  white-space: nowrap;
 }
 
 .name-label {
@@ -238,29 +231,24 @@ button:hover,
   border-color: rgba(124, 58, 237, 0.4);
 }
 
-.selfie-preview {
-  margin: 14px 0 12px;
-  display: flex;
-  justify-content: center;
+.summary {
+  margin: 0 0 18px;
+  color: #374151;
+  font-size: 1rem;
 }
 
-.selfie-preview img {
-  width: 100%;
-  max-width: 210px;
-  aspect-ratio: 1;
-  object-fit: cover;
-  border-radius: 18px;
-  border: 3px solid rgba(124, 58, 237, 0.18);
-  background: #0f172a;
+.controls {
+  margin: 0;
+  color: #334155;
+  font-weight: 600;
 }
 
-.leaderboard {
+.leaderboard-card {
   width: min(100%, 420px);
-  margin-top: 10px;
-  background: rgba(255, 255, 255, 0.82);
-  border-radius: 20px;
-  padding: 16px 18px;
-  box-shadow: 0 12px 22px rgba(76, 29, 149, 0.08);
+  background: rgba(255, 255, 255, 0.84);
+  border-radius: 24px;
+  padding: 20px 18px;
+  box-shadow: 0 18px 40px rgba(76, 29, 149, 0.08);
 }
 
 .leaderboard-header {
@@ -285,7 +273,7 @@ button:hover,
   color: #6b7280;
 }
 
-#leaderboardList {
+.leaderboard-list {
   list-style: none;
   margin: 0;
   padding: 0;
@@ -294,7 +282,7 @@ button:hover,
   gap: 8px;
 }
 
-#leaderboardList li {
+.leaderboard-list li {
   display: grid;
   grid-template-columns: 40px 1fr auto;
   align-items: center;
@@ -306,7 +294,7 @@ button:hover,
   font-weight: 700;
 }
 
-#leaderboardList li.empty {
+.leaderboard-list li.empty {
   display: block;
   text-align: center;
   color: #6b7280;
@@ -314,34 +302,18 @@ button:hover,
   padding: 12px;
 }
 
-#leaderboardList .rank {
+.leaderboard-list .rank {
   color: #7c3aed;
 }
 
-#leaderboardList .name {
+.leaderboard-list .name {
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
 }
 
-#leaderboardList .score {
+.leaderboard-list .score {
   color: #111827;
-}
-
-.hidden {
-  display: none !important;
-}
-
-.summary {
-  margin: 0 0 18px;
-  color: #374151;
-  font-size: 1rem;
-}
-
-.controls {
-  margin: 0;
-  color: #334155;
-  font-weight: 600;
 }
 
 @media (max-width: 480px) {
@@ -349,16 +321,24 @@ button:hover,
     padding-inline: 12px;
   }
 
-  .hud {
+  .hud,
+  .leaderboard-top {
     width: min(100%, 360px);
+  }
+
+  .hud-actions {
+    align-items: stretch;
   }
 
   .scores {
     gap: 8px;
+    width: 100%;
+    justify-content: space-between;
   }
 
   .score-box {
     min-width: 72px;
+    flex: 1;
   }
 
   .game-stage {

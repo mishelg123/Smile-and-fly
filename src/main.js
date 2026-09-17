@@ -1,4 +1,5 @@
 import './style.css'
+import { isSupabaseConfigured, supabase } from './supabaseClient'
 
 const app = document.querySelector('#app')
 
@@ -118,6 +119,8 @@ const state = {
   groundHeight: 88,
 }
 
+let leaderboardEntries = []
+
 function showGameView() {
   gameView.classList.remove('hidden')
   leaderboardView.classList.add('hidden')
@@ -136,7 +139,7 @@ function isStartScreenVisible() {
 bestScoreEl.textContent = state.bestScore
 playerNameInput.value = state.playerName
 
-function getLeaderboard() {
+function getLocalLeaderboard() {
   try {
     const raw = JSON.parse(localStorage.getItem(STORAGE_KEYS.leaderboard) || '[]')
     return Array.isArray(raw) ? raw : []
@@ -145,8 +148,8 @@ function getLeaderboard() {
   }
 }
 
-function renderLeaderboard() {
-  const leaderboard = [...getLeaderboard()]
+function renderLeaderboard(entries = leaderboardEntries) {
+  const leaderboard = [...entries]
     .sort((a, b) => b.score - a.score)
     .slice(0, 10)
 
@@ -161,24 +164,56 @@ function renderLeaderboard() {
     : '<li class="empty">No scores yet</li>'
 }
 
-function savePlayerScore(score) {
-  const name = (state.playerName || 'Player').trim().slice(0, 14) || 'Player'
-  const leaderboard = getLeaderboard()
-  const existingIndex = leaderboard.findIndex((entry) => entry.name.toLowerCase() === name.toLowerCase())
-  const updatedScore = Number(score) || 0
-
-  if (existingIndex >= 0) {
-    leaderboard[existingIndex].score = Math.max(Number(leaderboard[existingIndex].score) || 0, updatedScore)
-  } else {
-    leaderboard.push({ name, score: updatedScore })
+async function loadLeaderboard() {
+  if (!isSupabaseConfigured) {
+    leaderboardEntries = getLocalLeaderboard()
+    renderLeaderboard()
+    return
   }
 
-  const finalBoard = leaderboard
-    .sort((a, b) => b.score - a.score)
-    .slice(0, 10)
+  const { data, error } = await supabase
+    .from('leaderboard')
+    .select('name, score')
+    .order('score', { ascending: false })
+    .limit(10)
 
-  localStorage.setItem(STORAGE_KEYS.leaderboard, JSON.stringify(finalBoard))
+  if (error) {
+    console.error('Could not load shared leaderboard:', error)
+    leaderboardEntries = getLocalLeaderboard()
+  } else {
+    leaderboardEntries = data || []
+  }
+
   renderLeaderboard()
+}
+
+async function savePlayerScore(score) {
+  const name = (state.playerName || 'Player').trim().slice(0, 14) || 'Player'
+  const updatedScore = Number(score) || 0
+
+  if (isSupabaseConfigured) {
+    const { error } = await supabase.rpc('submit_score', {
+      p_name: name,
+      p_score: updatedScore,
+    })
+
+    if (error) {
+      console.error('Could not save shared score:', error)
+    }
+  } else {
+    const leaderboard = getLocalLeaderboard()
+    const existingIndex = leaderboard.findIndex((entry) => entry.name.toLowerCase() === name.toLowerCase())
+
+    if (existingIndex >= 0) {
+      leaderboard[existingIndex].score = Math.max(Number(leaderboard[existingIndex].score) || 0, updatedScore)
+    } else {
+      leaderboard.push({ name, score: updatedScore })
+    }
+
+    localStorage.setItem(STORAGE_KEYS.leaderboard, JSON.stringify(leaderboard.sort((a, b) => b.score - a.score).slice(0, 10)))
+  }
+
+  await loadLeaderboard()
 }
 
 function loadDefaultPlayerImage(onReady) {
@@ -229,7 +264,7 @@ function endRun() {
     bestScoreEl.textContent = state.bestScore
   }
 
-  savePlayerScore(state.score)
+  void savePlayerScore(state.score)
   finalScoreEl.textContent = state.score
   gameOverOverlay.classList.remove('hidden')
 }
@@ -510,3 +545,4 @@ bestScoreEl.textContent = String(state.bestScore)
 renderLeaderboard()
 loadDefaultPlayerImage()
 render()
+void loadLeaderboard()
